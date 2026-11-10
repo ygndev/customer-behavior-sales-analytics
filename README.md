@@ -2,26 +2,28 @@
 
 **Python · SQL (SQLite) · Pandas · Matplotlib · RFM**
 
-Gerçek perakende işlem verisini ham Excel dosyasından denetlenebilir analiz tablolarına ve görsellere dönüştüren portföy projesi. Polonya'daki Data Science / Data Analytics staj başvurularında veri hazırlama, SQL, keşifsel analiz ve müşteri segmentasyonu becerilerini göstermek için hazırlanmıştır.
+An end-to-end analytics portfolio project that turns real retail transactions into reproducible sales reports and customer segments. It demonstrates data cleaning, SQL joins and aggregation, exploratory analysis, and visual reporting.
 
-## İş soruları
+## Business questions
 
-1. Aylık satış tutarı, sipariş ve müşteri sayısı nasıl değişiyor?
-2. Yüksek değerli, sadık ve yeniden etkileşim fırsatı olan müşteriler kimler?
-3. Hangi ülkeler ve ürün kodları satış tutarında öne çıkıyor?
-4. Gözlenen aylık ve haftalık örüntüler operasyon planlamasına nasıl katkı sağlayabilir?
+1. How do monthly gross sales, order counts, and customer counts change over time?
+2. Which customers are high-value, loyal, or candidates for re-engagement?
+3. Which countries and product codes contribute the most to gross sales?
+4. How can observed monthly and weekly patterns inform operational planning?
 
-## Veri kaynağı ve atıf
+## Data source and attribution
 
-[UCI Online Retail](https://archive.ics.uci.edu/dataset/352/online-retail), Chen, D. (2015), DOI: [10.24432/C5BW33](https://doi.org/10.24432/C5BW33), **CC BY 4.0**. Kaynak, İngiltere merkezli bir çevrim içi perakendeciye ait 1 Aralık 2010–9 Aralık 2011 dönemini kapsayan 541.909 işlem satırı içerir. Para birimi GBP'dir. Polonya verisi değildir; proje staj başvurusu için hazırlanmıştır.
+[UCI Online Retail](https://archive.ics.uci.edu/dataset/352/online-retail), Chen, D. (2015), DOI: [10.24432/C5BW33](https://doi.org/10.24432/C5BW33), licensed under **CC BY 4.0**.
 
-Ham veri doğrudan UCI'den indirilir; sentetik veri kullanılmaz. `data/source_manifest.json` kaynak adresini ve incelenmiş Excel dosyasının SHA-256 özetini saklar. Sonraki çalıştırmalarda dosya özeti uyuşmazsa akış durur. İnternet bağlantısı yalnızca ilk indirmede gereklidir. Kaynak dosya depo içine sürümlenmez.
+The dataset contains **541,909 transaction lines** from a UK-based online retailer, covering **1 December 2010 to 9 December 2011**. Prices are in **GBP**. These are real historical transactions, not synthetic data.
 
-## Kurulum ve çalıştırma
+The pipeline downloads the original Excel file directly from UCI. `data/source_manifest.json` records the source URL and the reviewed file's SHA-256 checksum. A checksum mismatch stops subsequent runs. Internet access is required for the initial download; the raw dataset is excluded from Git.
 
-Python **3.12** ile doğrulanmıştır. Terminali bu README'nin bulunduğu klasörde açın.
+## Quick start
 
-Windows PowerShell:
+Validated with **Python 3.12**. Open a terminal in the repository root.
+
+### Windows PowerShell
 
 ```powershell
 py -3.12 -m venv .venv
@@ -30,7 +32,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-macOS / Linux:
+### macOS / Linux
 
 ```bash
 python3.12 -m venv .venv
@@ -39,66 +41,102 @@ python3.12 -m venv .venv
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-İlk çalıştırmada yaklaşık 23 MB indirilir. Ham Excel'in okunması birkaç dakika sürebilir. Yeniden çalıştırma çıktıları günceller; indirmeyi tekrarlamaz. Ağ kullanmadan çalıştırmak için `src/pipeline.py --offline` kullanın. `requirements.txt` doğrudan bağımlılıkları, `requirements-lock.txt` doğrulanan ortamın tüm sürümlerini içerir. SQLite Python ile birlikte gelir.
+The first run downloads approximately 23 MB. Reading the Excel file may take a few minutes. Subsequent runs reuse the cached raw file and regenerate the outputs. Add `--offline` to the pipeline command to require a cached dataset without downloading it.
 
-## Analiz akışı
+`requirements.txt` lists direct dependencies; `requirements-lock.txt` pins all package versions from the validated environment. SQLite is included with Python.
 
-`UCI XLSX → Pandas temizleme → SQLite sales + products → SQL raporları → Pandas RFM → CSV + PNG + kalite raporu`
+## Analysis workflow
 
-- Her satır bir fatura kalemidir. Sipariş sayısı `COUNT(DISTINCT invoice_no)` ile hesaplanır.
-- Tamamen aynı satırlar kaldırılır. Bu, kaynak satırlarında benzersiz kalem kimliği olmadığından bilinçli bir varsayımdır; bazı gerçek tekrarlar da elenebilir.
-- Geçersiz zorunlu alanlar, iptal kodları, sıfır/negatif miktar ve fiyatlar sırayla elenir. `quality_report.json` birbirini dışlayan bir eleme dökümü verir.
-- Müşteri kimliği eksik pozitif satışlar genel satış analizinde korunur; RFM'den çıkarılır. Ürün açıklaması eksikliği tek başına satış silme nedeni değildir.
-- Para tutarları, kaynakta bulunan 0,001 GBP hassasiyetini koruyan tamsayılarla toplanır; yalnızca sunumda iki ondalık basamak gösterilir.
-- İptal ve negatif hareketler satış kapsamından çıkarılır; orijinal faturayla iade eşleştirmesi yapılmaz. **Raporlanan tutar net gelir veya kâr değil, temizlenmiş brüt pozitif satıştır.** Kargo ve diğer ürün dışı kodlar korunur.
-- `products`, her stok kodu için zaman sırasındaki son dolu açıklamayı içerir. SQL `LEFT JOIN` ile ürün analizi üretilir ve birleşimin satır sayısını değiştirmediği doğrulanır. Açıklamalar tarihsel ürün boyutu değildir.
-- Dönem sonuna göre sabitlenen snapshot tarihi kullanılır; bugünün tarihi kullanılmadığı için RFM tekrarlanabilir.
+`UCI XLSX → Pandas cleaning → SQLite sales + products → SQL reports → Pandas RFM → CSV + PNG + quality report`
 
-## RFM yöntemi
+- **Transaction grain:** Each row is an invoice line. Orders are counted with `COUNT(DISTINCT invoice_no)`.
+- **Duplicates:** Exact duplicate rows are removed. Because the source has no unique invoice-line identifier, this is an explicit assumption that may also remove genuine repeated lines.
+- **Exclusion waterfall:** Invalid required fields, cancellation codes, nonpositive quantities, and nonpositive prices are removed in sequence. `reports/quality_report.json` records mutually exclusive exclusion counts.
+- **Missing customer IDs:** Valid positive sales without a customer ID remain in overall sales analysis but are excluded from RFM. A missing product description alone does not exclude a sale.
+- **Currency precision:** Monetary amounts are aggregated as integers in units of 0.001 GBP to preserve source precision. Narrative summaries display two decimal places.
+- **Sales definition:** Cancellation and negative transaction lines are excluded; returns are not matched to original invoices. **Reported amounts are cleaned gross positive sales, not net revenue or profit.** Shipping and other non-product codes are retained.
+- **SQL joins:** The `products` table contains the latest observed non-null description for each stock code. A `LEFT JOIN` supports product reporting, with a check that the join does not multiply transaction rows. This is not a historical product dimension.
+- **Reproducible snapshot:** RFM uses the day after the last retained transaction date rather than the current date.
 
-Recency = snapshot tarihi − son pozitif alışveriş tarihi (gün). Frequency = farklı pozitif fatura sayısı. Monetary = pozitif alışveriş tutarı. Tüm mevcut geçmiş kullanılır.
+## Customer segmentation: RFM
 
-Her metrik, eşit değerlere aynı puanı veren ortalama yüzdelik sıralama ile 1–5 puanlanır; düşük recency daha yüksek puandır. Eşitlikler nedeniyle gruplar tam yüzde 20 büyüklüğünde olmayabilir. Aşağıdaki ilk eşleşen kural uygulanır:
+- **Recency:** Days between the snapshot date and the customer's most recent positive purchase.
+- **Frequency:** Number of distinct positive invoices.
+- **Monetary:** Total positive purchase amount.
 
-| Segment | Kural |
+All available purchase history is used. Each metric receives a score from 1 to 5 using average percentile ranks. Equal values receive equal scores; lower recency receives a higher score. Ties mean score groups may differ in size from exact quintiles.
+
+The first matching rule determines the segment:
+
+| Segment | Rule |
 |---|---|
 | Champions | R ≥ 4, F ≥ 4, M ≥ 4 |
-| At risk high value | R ≤ 2 ve (F ≥ 4 veya M ≥ 4) |
+| At risk high value | R ≤ 2 and (F ≥ 4 or M ≥ 4) |
 | Recent low frequency | R ≥ 4, F ≤ 2 |
 | Loyal | F ≥ 4 |
 | Hibernating | R ≤ 2 |
-| Developing | Diğer müşteriler |
+| Developing | All remaining customers |
 
-Bu, açıklanabilir kural tabanlı segmentasyondur. Eğitilmiş makine öğrenmesi modeli veya churn tahmini değildir. Segment adları iş hipotezidir; kampanya başarısını kanıtlamaz.
+This is explainable, rule-based segmentation, not a trained machine learning model or a churn prediction system. Segment labels represent business hypotheses rather than evidence of campaign effectiveness.
 
-## Sonuçlar
+## Results
 
-Gerçek çalıştırmanın sayısal sonuçları: [Türkçe bulgu raporu](reports/findings_tr.md). Tüm CSV çıktıları `reports/tables/` altında bulunur.
+The validated run produced:
 
-![Aylık satışlar](reports/figures/monthly_sales.png)
+| Metric | Result |
+|---|---:|
+| Retained positive sales lines | 524,878 |
+| Distinct orders | 19,960 |
+| Identified customers | 4,338 |
+| Gross positive sales | £10,642,110.80 |
+| Share of sales linked to identified customers | 83.51% |
+| Highest-sales complete month | November 2011: £1,503,866.78 |
+| Average / median order value | £533.17 / £303.30 |
 
-![Müşteri segmentleri](reports/figures/segments.png)
+The **Champions** segment contains **911 customers** and accounts for **63.87%** of gross positive sales among identified customers. The **At risk high value** segment contains **406 customers**, suggesting a group to investigate for re-engagement experiments. Its historical sales are not an estimate of future lost or recoverable revenue.
 
-![Haftalık örüntü](reports/figures/weekday_sales.png)
+All analysis tables are available in `reports/tables/`. A [detailed findings report in Turkish](reports/findings_tr.md) accompanies the results.
 
-**Yorum sınırları:** Aralık 2011 yalnızca 1–9 günlerini kapsar; aylık büyüme hesaplanmaz. Bir yıllık döngü kalıcı mevsimselliği doğrulamak için yeterli değildir. Haftanın günleri grafiği yalnızca satış gözlenen günlerin ortalamasıdır; satış gözlenmeyen tarihler sıfır varsayılmaz. Müşteri kimliği eksikliği, toptancı müşteriler ve uç siparişler genellemeyi sınırlar. Nedensellik, tahmin başarısı veya kampanya kaynaklı gelir artışı iddia edilmez.
+![Monthly gross positive sales](reports/figures/monthly_sales.png)
 
-## Doğrulama
+![Gross positive sales by RFM segment](reports/figures/segments.png)
 
-Akış her çalışmada satır eleme toplamını, pozitif miktar/fiyat koşulunu, SQL–Pandas aylık tutar eşitliğini, müşteri bazlı toplam tutar ve sipariş sayılarını ve SQL birleşim kardinalitesini kontrol eder. Kontrol hatası çalıştırmayı başarısız kılar. Ayrı testler iptal, tekrar, anonim müşteri, bozuk tarih, fiyat hassasiyeti ve RFM eşitliklerini kapsar. `reports/quality_report.json` son gerçek veri çalıştırmasının sonucudur. GitHub Actions, küçük testleri çalıştırır; tam veri akışı yerelde veya isteğe bağlı workflow ile çalıştırılır.
+![Average sales by observed trading weekday](reports/figures/weekday_sales.png)
 
-## Dosyalar
+### Interpretation and limitations
 
-| Yol | Amaç |
+December 2011 covers only **1–9 December**, so its month-over-month growth is not calculated. Approximately one annual cycle is insufficient to establish persistent seasonality. The weekday chart averages only dates with observed sales; unobserved dates are not assumed to have zero sales.
+
+Missing customer IDs, wholesale buyers, and unusually large orders limit generalization. The project does not establish causality, predictive accuracy, or campaign-driven revenue uplift. Stock planning and customer outreach are proposed hypotheses that require further validation or controlled experiments.
+
+## Validation
+
+Every full run checks:
+
+- The exclusion waterfall reconciles to the raw row count.
+- Retained quantities and prices are positive.
+- SQL and Pandas produce matching monthly sales totals.
+- Customer-level recency, frequency, and monetary values agree between SQL and Pandas.
+- The product join preserves transaction row counts.
+
+Failed checks stop the run. Five unit tests cover cancellations, duplicates, anonymous customers, invalid dates, currency precision, fractional quantities, and deterministic RFM scoring with ties.
+
+`reports/quality_report.json` records the latest full-data validation result, and `reports/test_results.txt` contains the recorded unit-test output. GitHub Actions runs the unit tests on pushes and pull requests. A manually triggered workflow also executes the full pipeline. Workflow repository permissions are limited to read access.
+
+## Repository structure
+
+| Path | Purpose |
 |---|---|
-| `src/pipeline.py` | İndirme, temizleme, analiz ve görseller |
-| `sql/` | Bağımsız okunabilir SQL sorguları |
-| `tests/` | Kenar durum testleri |
-| `data/source_manifest.json` | Kaynak ve bütünlük kaydı |
-| `data/processed/retail.sqlite` | Yeniden üretilebilen veritabanı; Git dışında |
-| `reports/` | Bulgular, kalite raporu, CSV ve PNG çıktıları |
-| `docs/cv_and_interview_tr.md` | Kanıta dayalı CV maddeleri ve mülakat notları |
+| `src/pipeline.py` | Download, cleaning, analysis, and chart generation |
+| `sql/` | Readable SQL queries for sales, customers, countries, and products |
+| `tests/` | Edge-case and segmentation tests |
+| `data/source_manifest.json` | Source attribution and file integrity metadata |
+| `data/raw/` | Downloaded source file; excluded from Git |
+| `data/processed/retail.sqlite` | Reproducible SQLite database; excluded from Git |
+| `reports/` | Findings, quality checks, CSV tables, and PNG charts |
+| `docs/cv_and_interview_tr.md` | CV statements in Turkish and English, plus interview notes in Turkish |
+| `.github/workflows/validate.yml` | Automated validation workflow |
 
-## GitHub'a koyma
+## License
 
-Bu klasörün içeriğini yeni bir GitHub deposuna ekleyin. `.gitignore` ham veriyi, veritabanını ve sanal ortamı dışarıda tutar. Kod, SQL, testler, kaynak manifesti ve raporlar depoya dahildir. Veri lisansı CC BY 4.0'dır; kod MIT lisansıyla sunulur.
+Project code is provided under the **MIT License**. The source dataset is licensed under **CC BY 4.0**; derived tables and figures retain the dataset attribution. See [LICENSE](LICENSE) for details.

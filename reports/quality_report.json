@@ -1,0 +1,20 @@
+{
+  "raw_rows": 541909,
+  "exact_duplicates_removed": 5268,
+  "invalid_required_removed": 0,
+  "nonfinite_removed": 0,
+  "cancellation_lines_removed": 9251,
+  "nonpositive_quantity_removed": 1336,
+  "nonpositive_price_removed": 1176,
+  "retained_sales_rows": 524878,
+  "anonymous_sales_rows": 132186,
+  "snapshot_date": "2011-12-10",
+  "gross_sales_gbp": 10642110.804,
+  "source_start": "2010-12-01 08:26:00",
+  "source_end": "2011-12-09 12:50:00",
+  "currency_unit": "GBP; aggregation uses integer 0.001 GBP units",
+  "orders": 19960,
+  "known_customers": 4338,
+  "identified_sales_share_pct": 83.50983237892623,
+  "validation": "PASS: waterfall, positivity, join cardinality, SQL/Pandas monthly totals and per-customer RFM"
+}

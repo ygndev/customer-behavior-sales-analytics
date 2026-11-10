@@ -1,0 +1,11 @@
+Python 3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]
+test_excess_precision_rejected (test_pipeline.CleaningTests.test_excess_precision_rejected) ... ok
+test_fractional_quantity_rejected (test_pipeline.CleaningTests.test_fractional_quantity_rejected) ... ok
+test_millipound_precision_preserved (test_pipeline.CleaningTests.test_millipound_precision_preserved) ... ok
+test_rfm_direction_ties_and_order_independence (test_pipeline.CleaningTests.test_rfm_direction_ties_and_order_independence) ... ok
+test_waterfall_and_anonymous_sales (test_pipeline.CleaningTests.test_waterfall_and_anonymous_sales) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.060s
+
+OK
